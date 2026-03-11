@@ -5,8 +5,9 @@ WORKDIR /app
 
 COPY . .
 
-# Install deps and build in order; ensure @leadbot/shared is available for web build
-RUN pnpm install --frozen-lockfile && \
+# Install deps and build in order; ensure @leadbot/shared is available for web build.
+# In CI (Railway) we allow lockfile to be updated if needed.
+RUN pnpm install --no-frozen-lockfile && \
   pnpm db:generate && \
   pnpm build:widget && \
   cp apps/widget/dist/leadbot.js apps/web/public/widget/ 2>/dev/null || true && \
