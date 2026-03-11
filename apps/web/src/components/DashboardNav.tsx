@@ -11,6 +11,7 @@ const links = [
   { href: "/workflows", label: "Workflows" },
   { href: "/integrations", label: "Integrationer" },
   { href: "/analytics", label: "Rapporter" },
+  { href: "/settings/ai", label: "AI-assistent" },
 ];
 
 export function DashboardNav() {

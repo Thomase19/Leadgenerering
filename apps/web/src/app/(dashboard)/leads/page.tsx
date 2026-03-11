@@ -56,6 +56,8 @@ export default async function LeadsPage({
     getSitesForTenant(session.user.tenantId),
   ]);
 
+  console.info("[lead] dashboard leads page: fetched %d leads for tenant %s", leads.length, session.user.tenantId);
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-800 mb-6">Leads</h1>

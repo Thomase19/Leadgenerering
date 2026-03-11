@@ -3,6 +3,7 @@ export type QualificationState = {
   urgency?: string;
   budgetSignal?: string;
   serviceType?: string;
+  serviceInterest?: string;
   timeline?: string;
   contactCaptured?: boolean;
   companySizeSignal?: string;
@@ -10,6 +11,8 @@ export type QualificationState = {
   contactPhone?: string;
   contactName?: string;
   contactCompany?: string;
+  location?: string;
+  notes?: string;
 };
 
 export type QualificationQuestion = {

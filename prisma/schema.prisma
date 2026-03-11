@@ -43,6 +43,49 @@ model Tenant {
   crmConnections CrmConnection[]
   workflows      Workflow[]
   auditLogs      AuditLog[]
+  aiProfile      TenantAIProfile?
+}
+
+model TenantAIProfile {
+  id                     String   @id @default(cuid())
+  tenantId               String   @unique
+  companyName            String?
+  industry               String?  // free-text key, also used to link to industry templates
+  companyDescription     String?  @db.Text
+  servicesOffered        String?  @db.Text
+  targetAudience         String?  @db.Text
+  companyValues          String?  @db.Text
+  toneOfVoiceOverride    String?  @db.Text
+  faqContent             String?  @db.Text
+  openingHours           String?  @db.Text
+  geographicArea         String?  @db.Text
+  leadQualificationGoals String?  @db.Text
+  qualificationQuestions Json?    // [{ id, question, required }]
+  disallowedTopics       String?  @db.Text
+  escalationInstructions String?  @db.Text
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Optional link to a reusable industry template
+  industryTemplateId     String?
+  industryTemplate       IndustryPromptTemplate? @relation(fields: [industryTemplateId], references: [id])
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+}
+
+model IndustryPromptTemplate {
+  id                  String   @id @default(cuid())
+  industryKey         String   @unique // e.g. "car_dealership", "construction", ...
+  name                String
+  baseIndustryPrompt  String   @db.Text
+  suggestedQuestions  Json?   // [{ question, whenToAsk }]
+  qualificationLogic  String? @db.Text
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  tenantProfiles TenantAIProfile[]
 }
 
 model Workflow {

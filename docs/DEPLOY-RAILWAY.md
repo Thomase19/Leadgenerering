@@ -40,22 +40,19 @@ Step-by-step guide once you’ve signed into Railway with GitHub.
 
 ---
 
-## 5. Set build and start commands
+## 5. Build: use the Dockerfile (recommended)
 
-1. Still on the **app service**, open **Settings** (or the **Settings** tab).
-2. **Root Directory**: leave empty (repo root).
-3. **Build Command** (override the default):
-   ```bash
-   pnpm install && pnpm build
-   ```
-4. **Start Command** (override the default):
-   ```bash
-   pnpm start
-   ```
-   This runs database migrations and then starts the Next.js app.
-5. **Watch Paths** (optional): leave default so pushes to the repo trigger deploys.
+This repo includes a **Dockerfile** so Railway uses **pnpm** instead of npm. Railway runs **npm install** by default, which fails on the `workspace:*` protocol used by this pnpm monorepo.
 
-If Railway has a **Custom start command** or **Start command** in the **Variables** section (e.g. `RAILWAY_START_COMMAND`), set it to `pnpm start` instead of using the UI start command, depending on what your dashboard shows.
+1. With the **Dockerfile** in the repo root, Railway will detect it and build with Docker (no need to set Build Command in the dashboard).
+2. **Root Directory**: leave **empty** so the Dockerfile at repo root is used.
+3. The Dockerfile runs `pnpm install --frozen-lockfile` and `pnpm build`, then at runtime `pnpm db:migrate:deploy && pnpm --filter web start`.
+
+If you prefer not to use Docker and use Railpack instead:
+
+- **Root Directory**: leave **empty** (repo root) so Railway finds `pnpm-lock.yaml` and uses pnpm.
+- **Build Command**: `pnpm install && pnpm build`
+- **Start Command**: `pnpm start`
 
 ---
 
@@ -174,4 +171,15 @@ Then commit, push, and let Railway redeploy.
 | Required vars | `DATABASE_URL`, `REDIS_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `NEXT_PUBLIC_APP_URL`, `OPENAI_API_KEY` |
 | First-time DB | Migrations run on `pnpm start`; run `pnpm db:seed` once for demo user |
 
-If a deploy fails, check the **build** and **deploy** logs in Railway for the exact error (e.g. missing env var, wrong Node version, or Prisma/client issues).
+---
+
+## Troubleshooting
+
+**"Unsupported URL Type workspace:*" or "npm install" runs instead of pnpm**  
+Railway is using npm, which doesn’t support pnpm’s `workspace:*`. Use the **Dockerfile** in the repo root so the build uses pnpm (Railway builds with Docker when a Dockerfile is present). Ensure **Root Directory** is empty.
+
+**"Module not found: Can't resolve '@leadbot/shared'"**  
+The build is running only the web app instead of the full monorepo. Use the **Dockerfile** (recommended) or set **Root Directory** to **empty** and **Build Command** to `pnpm install && pnpm build`, then redeploy.
+
+**Other deploy failures**  
+Check the **build** and **deploy** logs in Railway (e.g. missing env var, wrong Node version, or Prisma/client issues).

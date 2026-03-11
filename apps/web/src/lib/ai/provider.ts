@@ -41,58 +41,15 @@ export type AiResponseResult = {
 };
 
 export async function generateResponse(params: {
-  greeting: string;
-  qualificationQuestions: { id: string; question: string; required: boolean }[];
+  systemPrompt: string;
   messages: { role: "VISITOR" | "BOT"; content: string }[];
   kbChunks: string[];
-  outsideBusinessHours: boolean;
   currentState: QualificationState | null;
-  toneOfVoice: string | null;
-  collectEmailPhoneFirst: boolean;
   siteHistoryContext: string;
 }): Promise<AiResponseResult> {
-  const {
-    greeting,
-    qualificationQuestions,
-    messages,
-    kbChunks,
-    outsideBusinessHours,
-    currentState,
-    toneOfVoice,
-    collectEmailPhoneFirst,
-    siteHistoryContext,
-  } = params;
+  const { systemPrompt, messages, kbChunks, currentState, siteHistoryContext } = params;
 
-  const systemParts = [
-    "You are an in-house advisor and salesperson for this company, available 24/7 on their website. Your role: (1) Advise visitors helpfully and professionally. (2) Qualify leads by understanding their intent, timeline, and needs. (3) Collect contact data (name, email, and optionally phone) so the sales team can follow up. You are not a generic bot – you represent the company and should sound like their team.",
-    "Keep responses concise (1–3 sentences unless the visitor asks for more). Be warm but efficient.",
-    `Opening line / greeting context: ${greeting}`,
-  ];
-
-  if (toneOfVoice?.trim()) {
-    systemParts.push(
-      `Tone of voice (follow this strictly): ${toneOfVoice.trim()}`
-    );
-  }
-
-  if (outsideBusinessHours) {
-    systemParts.push(
-      "Outside opening hours: the visitor will get a follow-up when the team is back. Still advise and qualify as usual; collecting their email/phone is especially important so the team can reach them."
-    );
-  }
-
-  if (collectEmailPhoneFirst) {
-    systemParts.push(
-      "Contact collection is key: once the visitor is engaged, naturally ask for their name and email (and phone if relevant). A lead is only qualified when we have at least email or phone. Weave the ask into the conversation (e.g. after answering a question or when they show interest)."
-    );
-  }
-
-  if (qualificationQuestions.length > 0) {
-    systemParts.push(
-      "Qualification questions to weave in when relevant: " +
-        qualificationQuestions.map((q) => q.question).join("; ")
-    );
-  }
+  const systemParts = [systemPrompt.trim()];
 
   if (siteHistoryContext.trim()) {
     systemParts.push(
@@ -104,10 +61,6 @@ export async function generateResponse(params: {
   if (kbChunks.length > 0) {
     systemParts.push("Relevant knowledge:\n" + kbChunks.slice(0, 5).join("\n\n"));
   }
-
-  systemParts.push(
-    "After each response, output a JSON block (on a single line, no markdown) with updated qualification state. Keys: intent, urgency, budgetSignal, serviceType, timeline, contactCaptured (true if they shared email or phone), companySizeSignal, contactEmail, contactPhone, contactName, contactCompany. Only include keys that you can infer from the conversation."
-  );
 
   const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
     { role: "system", content: systemParts.join("\n\n") },
@@ -138,7 +91,11 @@ export async function generateResponse(params: {
         intent: typeof parsed.intent === "string" ? parsed.intent : undefined,
         urgency: typeof parsed.urgency === "string" ? parsed.urgency : undefined,
         budgetSignal: typeof parsed.budgetSignal === "string" ? parsed.budgetSignal : undefined,
-        serviceType: typeof parsed.serviceType === "string" ? parsed.serviceType : undefined,
+        serviceType: typeof parsed.serviceInterest === "string"
+          ? parsed.serviceInterest
+          : typeof parsed.serviceType === "string"
+            ? parsed.serviceType
+            : undefined,
         timeline: typeof parsed.timeline === "string" ? parsed.timeline : undefined,
         contactCaptured: typeof parsed.contactCaptured === "boolean" ? parsed.contactCaptured : undefined,
         companySizeSignal: typeof parsed.companySizeSignal === "string" ? parsed.companySizeSignal : undefined,
@@ -146,6 +103,8 @@ export async function generateResponse(params: {
         contactPhone: typeof parsed.contactPhone === "string" ? parsed.contactPhone : undefined,
         contactName: typeof parsed.contactName === "string" ? parsed.contactName : undefined,
         contactCompany: typeof parsed.contactCompany === "string" ? parsed.contactCompany : undefined,
+        location: typeof parsed.location === "string" ? parsed.location : undefined,
+        notes: typeof parsed.notes === "string" ? parsed.notes : undefined,
       };
     } catch {
       // keep content as full response if JSON parse fails

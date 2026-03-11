@@ -84,12 +84,18 @@ export async function getLeadsForTenant(
       { notes: { contains: term, mode: "insensitive" } },
     ];
   }
-  return prisma.lead.findMany({
+  const take = 1000;
+  const leads = await prisma.lead.findMany({
     where,
     include: { site: true, session: true },
     orderBy: { createdAt: "desc" },
-    take: 200,
+    take,
   });
+  const total = await prisma.lead.count({ where });
+  if (total > take) {
+    console.warn("[lead] dashboard query capped: showing %d of %d leads for tenant %s", leads.length, total, tenantId);
+  }
+  return leads;
 }
 
 export async function deleteLeadForTenant(leadId: string, tenantId: string) {

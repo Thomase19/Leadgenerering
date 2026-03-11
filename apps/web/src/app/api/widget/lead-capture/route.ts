@@ -28,26 +28,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Email or phone required" }, { status: 400 });
   }
 
+  const logCtx = { sessionId, siteId: session.siteId, tenantId: session.site.tenantId };
   const existingLead = await prisma.lead.findUnique({ where: { sessionId } });
   if (existingLead) {
+    console.info("[lead] lead-capture: lead already exists", { ...logCtx, leadId: existingLead.id });
     return NextResponse.json({ ok: true, leadId: existingLead.id });
   }
 
   const score = 50; // default for offline capture
-  const lead = await prisma.lead.create({
-    data: {
-      sessionId,
-      siteId: session.siteId,
-      name: name ?? null,
-      email: email ?? null,
-      phone: phone ?? null,
-      company: company ?? null,
-      notes: message ?? null,
-      score,
-      qualified: true,
-      crmProvider: "NONE",
-    },
-  });
+  let lead: { id: string };
+  try {
+    lead = await prisma.lead.create({
+      data: {
+        sessionId,
+        siteId: session.siteId,
+        name: name ?? null,
+        email: email ?? null,
+        phone: phone ?? null,
+        company: company ?? null,
+        notes: message ?? null,
+        score,
+        qualified: true,
+        crmProvider: "NONE",
+      },
+    });
+    console.info("[lead] lead-capture: created in database", { ...logCtx, leadId: lead.id });
+  } catch (e) {
+    console.error("[lead] lead-capture: create failed", logCtx, e);
+    return NextResponse.json({ error: "Failed to save lead" }, { status: 500 });
+  }
 
   await prisma.chatSession.update({
     where: { id: sessionId },
@@ -62,7 +71,7 @@ export async function POST(req: Request) {
     try {
       await addCrmJob({ leadId: lead.id, tenantId, provider: "WEBHOOK" });
     } catch (e) {
-      console.error("Enqueue webhook job failed", e);
+      console.error("[lead] lead-capture: Enqueue webhook job failed", { ...logCtx, leadId: lead.id }, e);
     }
   }
   const hubspotConn = await prisma.crmConnection.findUnique({
@@ -72,14 +81,14 @@ export async function POST(req: Request) {
     try {
       await addCrmJob({ leadId: lead.id, tenantId, provider: "HUBSPOT" });
     } catch (e) {
-      console.error("Enqueue HubSpot job failed", e);
+      console.error("[lead] lead-capture: Enqueue HubSpot job failed", { ...logCtx, leadId: lead.id }, e);
     }
   }
   try {
     const { runWorkflowsForLead } = await import("@/lib/workflows");
     await runWorkflowsForLead(lead.id, tenantId, "LEAD_CAPTURED");
   } catch (e) {
-    console.error("Workflows failed", e);
+    console.error("[lead] lead-capture: Workflows failed", { ...logCtx, leadId: lead.id }, e);
   }
 
   return NextResponse.json({ ok: true, leadId: lead.id });

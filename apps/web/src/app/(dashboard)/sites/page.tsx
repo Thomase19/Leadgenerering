@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { authOptions } from "@/lib/auth";
 import { getSitesForTenant } from "@/lib/tenancy";
+import { DeleteSiteButton } from "./DeleteSiteButton";
 
 export default async function SitesPage() {
   const session = await getServerSession(authOptions);
@@ -39,7 +40,7 @@ export default async function SitesPage() {
                 Side-ID: {site.id} · Widget {site.widgetConfig ? "konfigureret" : "ikke konfigureret"}
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
               <Link
                 href={`/sites/${site.id}/knowledge`}
                 className="text-sm text-slate-600 hover:underline"
@@ -52,6 +53,7 @@ export default async function SitesPage() {
               >
                 Konfigurer
               </Link>
+              <DeleteSiteButton siteId={site.id} domain={site.domain} />
             </div>
           </li>
         ))}
